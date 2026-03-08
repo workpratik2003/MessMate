@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { C } from '../../theme';
 import { Card, Btn, Toast, StepBar } from '../../components/ui';
 
-const PLANS = [
-  { id: 'lunch',  label: 'Lunch Only',     icon: '🌞', price: 1800, desc: 'Every day lunch · 30 days' },
-  { id: 'dinner', label: 'Dinner Only',    icon: '🌙', price: 1600, desc: 'Every day dinner · 30 days' },
-  { id: 'both',   label: 'Lunch + Dinner', icon: '🍱', price: 3000, desc: 'Full day meals · 30 days', popular: true },
-];
-
-export default function PlanPurchase({ user, onPurchased, addLog }) {
+export default function PlanPurchase({ user, mess, onPurchased, onChangeMess, addLog }) {
   const [sel,    setSel]    = useState(null);
   const [paying, setPaying] = useState(false);
   const [done,   setDone]   = useState(false);
   const [err,    setErr]    = useState('');
+
+  const PLANS = [
+    { id: 'lunch',  label: 'Lunch Only',     icon: '🌞', price: mess?.pricing?.lunch  || 1800, desc: 'Every day lunch · 30 days' },
+    { id: 'dinner', label: 'Dinner Only',    icon: '🌙', price: mess?.pricing?.dinner || 1600, desc: 'Every day dinner · 30 days' },
+    { id: 'both',   label: 'Lunch + Dinner', icon: '🍱', price: mess?.pricing?.both   || 3000, desc: 'Full day meals · 30 days', popular: true },
+  ];
 
   const pay = async () => {
     if (!sel) return;
@@ -34,12 +34,40 @@ export default function PlanPurchase({ user, onPurchased, addLog }) {
       alignItems: 'center', justifyContent: 'center', padding: '28px 16px',
       background: `linear-gradient(160deg, ${C.cream}, #FFF8EE)` }}>
 
-      <StepBar steps={['Register', 'Choose Plan', 'Dashboard']} current={1} />
+      <StepBar steps={['Register', 'Find Mess', 'Choose Plan', 'Dashboard']} current={2} />
+
+      {/* Selected mess info */}
+      {mess && (
+        <div style={{
+          background: '#fff', borderRadius: 14, padding: '12px 16px', marginBottom: 18,
+          width: '100%', maxWidth: 420, border: `1.5px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: C.charcoal }}>
+              🍱 {mess.messName}
+            </div>
+            <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
+              👤 {mess.ownerName} · 📍 {mess.messAddress}
+            </div>
+          </div>
+          {onChangeMess && (
+            <button onClick={onChangeMess}
+              style={{
+                background: C.lightGray, border: 'none', borderRadius: 8,
+                padding: '6px 12px', cursor: 'pointer', fontWeight: 700,
+                fontSize: 12, color: C.saffron, whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+              ← Change
+            </button>
+          )}
+        </div>
+      )}
 
       <div style={{ textAlign: 'center', marginBottom: 24, maxWidth: 380 }}>
         <div style={{ fontSize: 44 }}>🍽️</div>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: C.charcoal, margin: '8px 0 4px' }}>
-          Welcome, @{user.username}!
+          Welcome, {user.name || user.username}!
         </h2>
         <p style={{ color: C.lightBrown, fontSize: 14 }}>
           Pick a meal plan to activate your account.

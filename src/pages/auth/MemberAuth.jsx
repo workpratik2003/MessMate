@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { C, validEmail } from '../../theme';
+import { C, validEmail, validPhone } from '../../theme';
 import { Btn, Field, Toast } from '../../components/ui';
 import AuthShell, { ModeSwitcher } from './AuthShell';
 
@@ -13,7 +13,7 @@ const DEMO = [
 export default function MemberAuth({ onLogin, addLog, onBack }) {
   const [mode,      setMode]      = useState('login');
   const [demoEmail, setDemoEmail] = useState(DEMO[0].value);
-  const [f,         setF]         = useState({ username: '', email: '', password: '', confirm: '' });
+  const [f,         setF]         = useState({ name: '', address: '', phone: '', email: '', password: '', confirm: '' });
   const [errors,    setErrors]    = useState({});
   const [apiErr,    setApiErr]    = useState('');
   const [loading,   setLoading]   = useState(false);
@@ -22,7 +22,9 @@ export default function MemberAuth({ onLogin, addLog, onBack }) {
 
   const handleRegister = async () => {
     const e = {};
-    if (f.username.trim().length < 3) e.username = 'Min. 3 characters.';
+    if (f.name.trim().length < 2)     e.name     = 'Enter your full name (min. 2 characters).';
+    if (!f.address.trim())            e.address  = 'Enter your address.';
+    if (!validPhone(f.phone))         e.phone    = 'Enter a valid 10-digit Indian number.';
     if (!validEmail(f.email))         e.email    = 'Enter a valid email.';
     if (f.password.length < 6)        e.password = 'Min. 6 characters.';
     if (f.password !== f.confirm)     e.confirm  = 'Passwords do not match.';
@@ -59,8 +61,10 @@ export default function MemberAuth({ onLogin, addLog, onBack }) {
 
       {mode === 'register' ? (
         <>
-          <Toast type="info">After registering you'll choose a meal plan to get started.</Toast>
-          <Field label="Username"         value={f.username} onChange={(v) => upd('username', v)} placeholder="your_username" required error={errors.username} hint="Min. 3 characters, unique" />
+          <Toast type="info">After registering you'll find a mess near you and choose a meal plan.</Toast>
+          <Field label="Full Name"        value={f.name}     onChange={(v) => upd('name', v)}     placeholder="e.g. Pratik Patil"  required error={errors.name} />
+          <Field label="Address"          value={f.address}  onChange={(v) => upd('address', v)}  placeholder="Area, City"          required error={errors.address} />
+          <Field label="Phone Number"     value={f.phone}    onChange={(v) => upd('phone', v.replace(/\D/g, '').slice(0, 10))} type="tel" placeholder="10-digit mobile" required error={errors.phone} hint="Indian mobile starting with 6–9" />
           <Field label="Email"            value={f.email}    onChange={(v) => upd('email', v)}    type="email"    placeholder="you@example.com"   required error={errors.email} />
           <Field label="Password"         value={f.password} onChange={(v) => upd('password', v)} type="password" placeholder="Min. 6 characters" required error={errors.password} />
           <Field label="Confirm Password" value={f.confirm}  onChange={(v) => upd('confirm', v)}  type="password" placeholder="Re-enter password"  required error={errors.confirm} />

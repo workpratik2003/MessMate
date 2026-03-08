@@ -1,5 +1,6 @@
 import { C, daysLeft, planLabel } from '../../theme';
 import { Card, Badge, AppHeader, BottomNav } from '../../components/ui';
+import MessBrowser     from './MessBrowser';
 import PlanPurchase    from './PlanPurchase';
 import AttendanceTab   from './AttendanceTab';
 import SubscriptionTab from './SubscriptionTab';
@@ -23,7 +24,7 @@ function MemberHome({ user }) {
         <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 3 }}>
           Good {new Date().getHours() < 12 ? 'Morning' : 'Evening'} 👋
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800 }}>@{user.username}</div>
+        <div style={{ fontSize: 22, fontWeight: 800 }}>{user.name || `@${user.username}`}</div>
         <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Badge color="#fff" bg="rgba(255,255,255,0.2)">{planLabel(user.plan)}</Badge>
           {user.endDate && (
@@ -63,11 +64,23 @@ function MemberHome({ user }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function MemberDashboard({ user, onLogout, onRefresh, addLog }) {
-  const [tab, setTab] = useState('home');
+  const [tab,          setTab]          = useState('home');
+  const [selectedMess, setSelectedMess] = useState(null);
 
-  // If no plan, show plan purchase flow
+  // If no plan: step 1 = browse messes, step 2 = choose plan
   if (!user.plan) {
-    return <PlanPurchase user={user} onPurchased={onRefresh} addLog={addLog} />;
+    if (!selectedMess) {
+      return <MessBrowser onSelect={(m) => setSelectedMess(m)} addLog={addLog} />;
+    }
+    return (
+      <PlanPurchase
+        user={user}
+        mess={selectedMess}
+        onPurchased={onRefresh}
+        onChangeMess={() => setSelectedMess(null)}
+        addLog={addLog}
+      />
+    );
   }
 
   const dl = daysLeft(user.endDate);
@@ -90,7 +103,7 @@ export default function MemberDashboard({ user, onLogout, onRefresh, addLog }) {
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.saffron,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontWeight: 800, fontSize: 14 }}>
-              {user.username[0].toUpperCase()}
+              {(user.name || user.username)[0].toUpperCase()}
             </div>
             <button onClick={onLogout} title="Logout"
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.gray }}>
@@ -116,7 +129,6 @@ export default function MemberDashboard({ user, onLogout, onRefresh, addLog }) {
 
       <BottomNav tabs={TABS} active={tab} onSelect={setTab} bg="#fff"
         activeColor={C.saffron}
-        // Override so member nav has white bg with saffron text (not dark bg)
       />
     </div>
   );

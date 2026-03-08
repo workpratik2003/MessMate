@@ -56,3 +56,6 @@ export const purchasePlan    = (plan)           => req('/api/plan/purchase',   {
 export const renewPlan       = (plan)           => req('/api/plan/renew',      { method: 'POST', body: { plan } });
 export const generateOtp     = ()               => req('/api/otp/generate',    { method: 'POST' });
 export const submitAbsence   = (from, to, reason) => req('/api/absences',      { method: 'POST', body: { from, to, reason } });
+
+// ── Public ────────────────────────────────────────────────────────────────────
+export const listMesses      = ()               => req('/api/messes');
