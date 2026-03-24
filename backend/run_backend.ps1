@@ -31,5 +31,5 @@ if (-not (Test-Path "messmate.db")) {
     python seed.py
 }
 
-Write-Host "`nStarting Flask API Server on http://localhost:5000`n" -ForegroundColor Green
+Write-Host "`nStarting production WSGI server (waitress) on http://localhost:5000`n" -ForegroundColor Green
 python app.py

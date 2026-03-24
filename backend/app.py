@@ -70,6 +70,7 @@ def list_messes():
             'id': a.id,
             'messName': a.mess_name,
             'ownerName': a.name,
+            'ownerPhone': a.phone,
             'messAddress': a.mess_address,
             'pricing': {'lunch': a.price_lunch, 'dinner': a.price_dinner, 'both': a.price_both},
         }
@@ -465,4 +466,13 @@ def submit_absence():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True, port=5000)
+
+    # Production-ready WSGI server
+    # Use waitress for deployment in preview and production environments.
+    try:
+        from waitress import serve
+    except ImportError:
+        raise RuntimeError('waitress is required for production serving. Install via `pip install -r requirements.txt`.')
+
+    print('Starting Waitress WSGI server on http://0.0.0.0:5000')
+    serve(app, host='0.0.0.0', port=5000)
