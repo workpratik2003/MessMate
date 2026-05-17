@@ -94,9 +94,10 @@ function MembersSheet({ users, onClose }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function AdminDashboard({ user, onLogout, onRefresh, addLog }) {
-  const [tab,         setTab]         = useState(!user.pricing?.lunch ? 'pricing' : 'home');
-  const [users,       setUsers]       = useState([]);
-  const [showMembers, setShowMembers] = useState(false);
+  const [tab,           setTab]           = useState(!user.pricing?.lunch ? 'pricing' : 'home');
+  const [users,         setUsers]         = useState([]);
+  const [showMembers,   setShowMembers]   = useState(false);
+  const [slotMaxExtDays, setSlotMaxExtDays] = useState(15);
 
   const fetchUsers = useCallback(async () => {
     addLog('GET', '/api/users');
@@ -107,6 +108,19 @@ export default function AdminDashboard({ user, onLogout, onRefresh, addLog }) {
       setUsers(data);
     } catch {}
   }, []);
+
+  // Fetch the slot for this admin to get maxExtensionDays
+  useEffect(() => {
+    (async () => {
+      try {
+        const { flask } = await import('../../mock/flask');
+        const slots = await flask.listSlots?.();
+        // Find the slot belonging to this admin
+        const mySlot = slots?.slots?.find((s) => s.admin?.id === user.id);
+        if (mySlot) setSlotMaxExtDays(mySlot.maxExtensionDays ?? 15);
+      } catch {}
+    })();
+  }, [user.id]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -159,7 +173,7 @@ export default function AdminDashboard({ user, onLogout, onRefresh, addLog }) {
         {tab === 'home'     && <AdminHome users={users} pending={pending} expiring={expiring} admin={user} onViewMembers={() => setShowMembers(true)} />}
         {tab === 'pricing'  && <AdminPricing  user={user} onRefresh={onRefresh} addLog={addLog} />}
         {tab === 'verify'   && <AdminVerify   onVerified={fetchUsers} addLog={addLog} />}
-        {tab === 'absences' && <AdminAbsences users={users} onRefresh={fetchUsers} addLog={addLog} />}
+        {tab === 'absences' && <AdminAbsences users={users} onRefresh={fetchUsers} addLog={addLog} slotMaxExtDays={slotMaxExtDays} />}
       </main>
 
       <BottomNav tabs={TABS} active={tab} onSelect={setTab} />

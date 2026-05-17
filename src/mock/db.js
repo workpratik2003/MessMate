@@ -104,10 +104,10 @@ export const db = {
   ],
 
   slots: [
-    { id: 1, label: 'Slot 1 – Pune FC Road',     status: 'active', adminId: 1, createdAt: new Date().toISOString() },
-    { id: 2, label: 'Slot 2 – Available',         status: 'empty',  adminId: null, createdAt: new Date().toISOString() },
-    { id: 3, label: 'Slot 3 – Pune MG Road',      status: 'active', adminId: 6, createdAt: new Date().toISOString() },
-    { id: 4, label: 'Slot 4 – Pune KP',           status: 'active', adminId: 7, createdAt: new Date().toISOString() },
-    { id: 5, label: 'Slot 5 – Mumbai Andheri',    status: 'active', adminId: 8, createdAt: new Date().toISOString() },
+    { id: 1, label: 'Slot 1 – Pune FC Road',     status: 'active', adminId: 1, maxExtensionDays: 15, createdAt: new Date().toISOString() },
+    { id: 2, label: 'Slot 2 – Available',         status: 'empty',  adminId: null, maxExtensionDays: 15, createdAt: new Date().toISOString() },
+    { id: 3, label: 'Slot 3 – Pune MG Road',      status: 'active', adminId: 6, maxExtensionDays: 15, createdAt: new Date().toISOString() },
+    { id: 4, label: 'Slot 4 – Pune KP',           status: 'active', adminId: 7, maxExtensionDays: 12, createdAt: new Date().toISOString() },
+    { id: 5, label: 'Slot 5 – Mumbai Andheri',    status: 'active', adminId: 8, maxExtensionDays: 20, createdAt: new Date().toISOString() },
   ],
 };

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { C } from '../../theme';
 import { Card, Btn, Badge, Toast } from '../../components/ui';
 
-export default function AdminAbsences({ users, onRefresh, addLog }) {
+export default function AdminAbsences({ users, onRefresh, addLog, slotMaxExtDays = 15 }) {
   const [loading, setLoading] = useState(null);
 
   const pending = users.flatMap((u) =>
@@ -42,14 +42,17 @@ export default function AdminAbsences({ users, onRefresh, addLog }) {
   return (
     <div>
       <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>📬 Absence Requests</div>
-      <div style={{ color: C.gray, fontSize: 14, marginBottom: 18 }}>
+      <div style={{ color: C.gray, fontSize: 14, marginBottom: 4 }}>
         Approving extends the member's subscription by the number of absent days.
+      </div>
+      <div style={{ fontSize: 12, color: C.lightBrown, marginBottom: 18 }}>
+        Extension limit for this mess: <strong>{slotMaxExtDays} days</strong>
       </div>
 
       {pending.length === 0
         ? <Toast type="success">No pending absence requests!</Toast>
         : pending.map((a) => {
-          const remaining  = 15 - a.extensionDays;
+          const remaining  = slotMaxExtDays - a.extensionDays;
           const canApprove = remaining >= a.days;
           return (
             <Card key={a.id} style={{ marginBottom: 12 }}>
@@ -62,12 +65,15 @@ export default function AdminAbsences({ users, onRefresh, addLog }) {
                   {a.reason && (
                     <div style={{ fontSize: 13, color: C.lightBrown, marginTop: 2 }}>"{a.reason}"</div>
                   )}
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    Extension used: {a.extensionDays}/{slotMaxExtDays} days
+                  </div>
                 </div>
                 <Badge color={C.brown} bg={C.lightAmber}>Pending</Badge>
               </div>
 
               {!canApprove && (
-                <Toast type="warn">Only {remaining} extension day(s) remaining for this member.</Toast>
+                <Toast type="warn">Only {remaining} extension day(s) remaining for this member (limit: {slotMaxExtDays}).</Toast>
               )}
 
               <div style={{ display: 'flex', gap: 10 }}>

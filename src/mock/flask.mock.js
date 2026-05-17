@@ -7,10 +7,55 @@
 import { db, genId, genAbsId, genSlotId } from './db';
 import { validEmail, validPhone } from '../theme';
 
+// ── Configurable constants (mirror config.py) ──────────────────────────────────
+const OTP_CONFIG = {
+  length:           4,    // digits
+  ttlMs:       180_000,   // 3 minutes in milliseconds
+  ttlSeconds:     180,
+  lunchStart:      11,   // 11:00 AM
+  lunchEnd:        15,   // 3:00 PM
+  dinnerStart:     19,   // 7:00 PM
+  dinnerEnd:       22,   // 10:00 PM
+  absenceLeadHours: 2,   // hours before meal window
+  defaultMaxExtDays: 15, // fallback if slot has no limit
+};
+
 const pause   = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 const uuid    = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x.toISOString().split('T')[0]; };
 const today   = () => new Date().toISOString().split('T')[0];
+const tomorrow = () => addDays(today(), 1);
+
+// ── Meal-window helpers ─────────────────────────────────────────────────────────
+const currentHour = () => new Date().getHours();
+const isLunchWindow  = () => { const h = currentHour(); return h >= OTP_CONFIG.lunchStart  && h < OTP_CONFIG.lunchEnd;  };
+const isDinnerWindow = () => { const h = currentHour(); return h >= OTP_CONFIG.dinnerStart && h < OTP_CONFIG.dinnerEnd; };
+const getAllowedMeal = (plan) => {
+  if (plan === 'lunch')  return isLunchWindow()  ? 'lunch'  : null;
+  if (plan === 'dinner') return isDinnerWindow() ? 'dinner' : null;
+  if (plan === 'both')   { if (isLunchWindow()) return 'lunch'; if (isDinnerWindow()) return 'dinner'; }
+  return null;
+};
+const nextWindowDesc = (plan) => {
+  const h = currentHour();
+  if ((plan === 'lunch' || plan === 'both') && h < OTP_CONFIG.lunchStart)
+    return `Lunch window opens at ${OTP_CONFIG.lunchStart}:00 AM`;
+  if ((plan === 'lunch' || plan === 'both') && h < OTP_CONFIG.dinnerStart)
+    return `Dinner window opens at ${OTP_CONFIG.dinnerStart}:00 (7 PM)`;
+  return "No more OTP windows today. Come back tomorrow!";
+};
+const hoursUntilNextWindow = (plan) => {
+  const now = new Date();
+  const h = now.getHours() + now.getMinutes() / 60;
+  const candidates = [];
+  if (plan === 'lunch'  || plan === 'both') candidates.push(OTP_CONFIG.lunchStart);
+  if (plan === 'dinner' || plan === 'both') candidates.push(OTP_CONFIG.dinnerStart);
+  for (const start of candidates.sort((a, b) => a - b)) { if (h < start) return start - h; }
+  return 24 - h + Math.min(...candidates); // wrap to next day
+};
+// Get the slot for the currently logged-in admin (or any active slot for member checks)
+const getAdminSlot = (adminId) => db.slots.find((s) => s.adminId === adminId) || null;
+const getAnyActiveSlot = ()    => db.slots.find((s) => s.status === 'active')  || null;
 
 // ── Serialisers ──────────────────────────────────────────────────────────────
 const toUser = (u) => {
@@ -30,7 +75,7 @@ const toUser = (u) => {
 
 const toSlot = (s) => {
   const admin = s.adminId ? db.users.find((u) => u.id === s.adminId) : null;
-  return { id: s.id, label: s.label, status: s.status, createdAt: s.createdAt, admin: admin ? toUser(admin) : null };
+  return { id: s.id, label: s.label, status: s.status, createdAt: s.createdAt, maxExtensionDays: s.maxExtensionDays ?? 15, admin: admin ? toUser(admin) : null };
 };
 
 // ── Session helpers ──────────────────────────────────────────────────────────
@@ -184,10 +229,11 @@ export const flask = {
   async verifyOtp(otp) {
     await pause(500);
     const admin = currentUser(); if (!admin || admin.role !== 'admin') throw new Error('Admin access required.');
-    if (String(otp).length !== 6) throw new Error('Enter a valid 6-digit OTP.');
+    // Feature 1: 4-digit OTP
+    if (String(otp).length !== OTP_CONFIG.length) throw new Error(`Enter a valid ${OTP_CONFIG.length}-digit OTP.`);
     const member = db.users.find((u) => u.otp === String(otp));
     if (!member) throw new Error('Invalid OTP — no matching member found.');
-    if (Date.now() > member.otpExpiresAt) { member.otp = null; member.otpExpiresAt = null; throw new Error('OTP expired (5 min limit).'); }
+    if (Date.now() > member.otpExpiresAt) { member.otp = null; member.otpExpiresAt = null; throw new Error(`OTP expired (${OTP_CONFIG.ttlSeconds / 60} min limit).`); }
     const t = today();
     if (member.attended.includes(t)) { member.otp = null; throw new Error(`${member.username}'s attendance already marked today.`); }
     member.attended.push(t); member.otp = null; member.otpExpiresAt = null;
@@ -201,13 +247,17 @@ export const flask = {
   async approveAbsence(id) {
     await pause(500);
     const admin = currentUser(); if (!admin || admin.role !== 'admin') throw new Error('Admin access required.');
+    // Feature 7: per-slot max extension limit
+    const slot = getAdminSlot(admin.id);
+    const maxExt = slot ? (slot.maxExtensionDays ?? OTP_CONFIG.defaultMaxExtDays) : OTP_CONFIG.defaultMaxExtDays;
     for (const u of db.users) {
       const abs = u.pendingAbsences.find((a) => a.id === id);
       if (abs) {
-        const extra = Math.min(abs.days, 15 - u.extensionDays);
+        const extra = Math.min(abs.days, maxExt - u.extensionDays);
+        if (extra <= 0) throw new Error(`Member has reached the extension limit of ${maxExt} days.`);
         abs.approved = true; u.extensionDays += extra;
         u.endDate = addDays(u.endDate || today(), extra);
-        return { ok: true };
+        return { ok: true, daysExtended: extra };
       }
     }
     throw new Error('Absence not found.');
@@ -262,19 +312,56 @@ export const flask = {
     await pause(400);
     const u = currentUser(); if (!u) throw new Error('Not logged in.');
     if (!u.plan) throw new Error('You need an active plan to generate an OTP.');
-    u.otp = String(Math.floor(100_000 + Math.random() * 900_000));
-    u.otpExpiresAt = Date.now() + 300_000;
-    return { otp: u.otp, otpExpiresAt: u.otpExpiresAt, ttlSeconds: 300 };
+    // Feature 3: time-gated OTP generation
+    const allowedMeal = getAllowedMeal(u.plan);
+    if (!allowedMeal) throw new Error(`OTP generation is not available right now. ${nextWindowDesc(u.plan)}`);
+    // Feature 1 & 2: 4-digit OTP, 3-min TTL, unlimited regeneration
+    const min = 10 ** (OTP_CONFIG.length - 1);
+    const max = 10 ** OTP_CONFIG.length - 1;
+    u.otp = String(Math.floor(min + Math.random() * (max - min + 1)));
+    u.otpExpiresAt = Date.now() + OTP_CONFIG.ttlMs;
+    return { otp: u.otp, otpExpiresAt: u.otpExpiresAt, ttlSeconds: OTP_CONFIG.ttlSeconds, mealType: allowedMeal };
   },
   async submitAbsence(from, to, reason) {
     await pause(500);
     const u = currentUser(); if (!u) throw new Error('Not logged in.');
     const days = Math.ceil((new Date(to) - new Date(from)) / 86_400_000) + 1;
     if (days <= 0) throw new Error('End date must be on or after start date.');
-    const remaining = 15 - u.extensionDays;
-    if (days > remaining) throw new Error(`Only ${remaining} extension days remaining (max 15).`);
+    // Feature 6: future-only dates (from must be tomorrow or later)
+    if (from <= today()) throw new Error('Absence must start from tomorrow or a future date.');
+    // Feature 5: 2-hour lead time if the absence starts tomorrow
+    if (from === tomorrow()) {
+      const hrsLeft = hoursUntilNextWindow(u.plan);
+      if (hrsLeft < OTP_CONFIG.absenceLeadHours)
+        throw new Error(
+          `Absences for tomorrow must be submitted at least ${OTP_CONFIG.absenceLeadHours} hours before the meal window. Only ${hrsLeft.toFixed(1)} hour(s) remaining.`
+        );
+    }
+    // Feature 7: per-slot max extension limit
+    const slot = getAnyActiveSlot();
+    const maxExt = slot ? (slot.maxExtensionDays ?? OTP_CONFIG.defaultMaxExtDays) : OTP_CONFIG.defaultMaxExtDays;
+    const remaining = maxExt - u.extensionDays;
+    if (days > remaining) throw new Error(`Only ${remaining} extension day(s) remaining (max ${maxExt}).`);
     const abs = { id: genAbsId(), from, to, days, reason: reason || '', approved: false };
     u.pendingAbsences.push(abs);
     return abs;
+  },
+  // Feature 7: slot settings (owner only)
+  async getSlotSettings(slotId) {
+    await pause(200);
+    const u = currentUser(); if (!u || u.role !== 'owner') throw new Error('Owner access required.');
+    const slot = db.slots.find((s) => s.id === slotId);
+    if (!slot) throw new Error('Slot not found.');
+    return { slotId: slot.id, maxExtensionDays: slot.maxExtensionDays ?? OTP_CONFIG.defaultMaxExtDays };
+  },
+  async updateSlotSettings(slotId, { maxExtensionDays }) {
+    await pause(300);
+    const u = currentUser(); if (!u || u.role !== 'owner') throw new Error('Owner access required.');
+    const slot = db.slots.find((s) => s.id === slotId);
+    if (!slot) throw new Error('Slot not found.');
+    if (!Number.isInteger(maxExtensionDays) || maxExtensionDays < 0)
+      throw new Error('maxExtensionDays must be a non-negative integer.');
+    slot.maxExtensionDays = maxExtensionDays;
+    return toSlot(slot);
   },
 };

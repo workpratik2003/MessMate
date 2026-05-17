@@ -10,6 +10,9 @@ export default function OwnerDashboard({ user, onLogout, addLog }) {
   const [assignSlot, setAssignSlot] = useState(null);
   const [msg,        setMsg]        = useState(null);
   const [creds,      setCreds]      = useState(null);
+  // For editing max extension days inline
+  const [editExtSlot,  setEditExtSlot]  = useState(null);  // slot id being edited
+  const [editExtValue, setEditExtValue] = useState('');    // input string
 
   const fetchSlots = useCallback(async () => {
     addLog('GET', '/api/owner/slots');
@@ -59,6 +62,17 @@ export default function OwnerDashboard({ user, onLogout, addLog }) {
 
   const onAssigned = (result) => { setCreds(result.credentials); setAssignSlot(null); fetchSlots(); };
   const totalActive = slots.filter((s) => s.status === 'active').length;
+
+  const saveExtLimit = async (slotId) => {
+    const val = parseInt(editExtValue, 10);
+    if (isNaN(val) || val < 0) { setMsg({ type: 'error', text: 'Enter a valid number (0 or more).' }); return; }
+    try {
+      const { flask } = await import('../../mock/flask');
+      await flask.updateSlotSettings(slotId, { maxExtensionDays: val });
+      setMsg({ type: 'success', text: `Extension limit updated to ${val} days.` });
+      setEditExtSlot(null); fetchSlots();
+    } catch (e) { setMsg({ type: 'error', text: e.message }); }
+  };
 
   return (
     <div style={{ background: C.cream, minHeight: '100vh' }}>
@@ -144,6 +158,38 @@ export default function OwnerDashboard({ user, onLogout, addLog }) {
                 )}
               </div>
             )}
+
+            {/* Extension limit row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: 10, padding: '8px 10px', background: C.lightGray, borderRadius: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.brown }}>
+                📅 Max Extension Days
+              </span>
+              {editExtSlot === slot.id ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    type="number" min="0" max="60"
+                    value={editExtValue}
+                    onChange={(e) => setEditExtValue(e.target.value)}
+                    style={{ width: 60, padding: '4px 8px', borderRadius: 8, border: `1.5px solid ${C.saffron}`,
+                      fontSize: 14, fontWeight: 700, textAlign: 'center', fontFamily: 'inherit' }}
+                  />
+                  <button onClick={() => saveExtLimit(slot.id)}
+                    style={{ background: C.saffron, color: '#fff', border: 'none', borderRadius: 8,
+                      padding: '4px 12px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Save</button>
+                  <button onClick={() => setEditExtSlot(null)}
+                    style={{ background: C.lightGray, border: 'none', borderRadius: 8,
+                      padding: '4px 10px', cursor: 'pointer', fontSize: 13 }}>✕</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Badge color={C.indigo} bg={C.lightIndigo}>{slot.maxExtensionDays ?? 15} days</Badge>
+                  <button onClick={() => { setEditExtSlot(slot.id); setEditExtValue(String(slot.maxExtensionDays ?? 15)); }}
+                    style={{ background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 8,
+                      padding: '3px 10px', cursor: 'pointer', fontSize: 12, color: C.gray, fontWeight: 600 }}>Edit</button>
+                </div>
+              )}
+            </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {slot.status === 'empty'  && <Btn small variant="purple" onClick={() => setAssignSlot(slot)}>Assign Admin</Btn>}

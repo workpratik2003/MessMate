@@ -23,6 +23,8 @@ export const flask = {
   deleteSlot: api.deleteSlot,
   assignAdmin: (id, data) => api.assignAdmin(id, data),
   removeAdmin: api.removeAdmin,
+  getSlotSettings: api.getSlotSettings,
+  updateSlotSettings: (id, body) => api.updateSlotSettings(id, body),
   
   // Admin
   adminLogin: api.adminLogin,

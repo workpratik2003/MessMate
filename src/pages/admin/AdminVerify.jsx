@@ -23,7 +23,7 @@ export default function AdminVerify({ onVerified, addLog }) {
   }, [fetchOtps]);
 
   const verify = async () => {
-    if (input.length !== 6) { setResult({ type: 'error', text: 'Enter a valid 6-digit OTP.' }); return; }
+    if (input.length !== 4) { setResult({ type: 'error', text: 'Enter a valid 4-digit OTP.' }); return; }
     setLoading(true); addLog('POST', '/api/otp/verify');
     try {
       const { flask } = await import('../../mock/flask');
@@ -39,21 +39,21 @@ export default function AdminVerify({ onVerified, addLog }) {
     <div>
       <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>✅ Verify OTP</div>
       <div style={{ color: C.gray, fontSize: 14, marginBottom: 18 }}>
-        Enter the 6-digit OTP shown on the member's phone to mark their attendance.
+        Enter the 4-digit OTP shown on the member's phone to mark their attendance.
       </div>
 
       {result && <Toast type={result.type} onClose={() => setResult(null)}>{result.text}</Toast>}
 
       <Card style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: C.lightBrown, marginBottom: 8 }}>Enter 6-Digit OTP</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.lightBrown, marginBottom: 8 }}>Enter 4-Digit OTP</div>
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={(e) => setInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
           onKeyDown={(e) => e.key === 'Enter' && verify()}
-          placeholder="_ _ _ _ _ _"
+          placeholder="_ _ _ _"
           style={{ width: '100%', padding: '15px 14px', borderRadius: 12,
-            border: `2px solid ${C.border}`, fontSize: 32, fontWeight: 900,
-            letterSpacing: 12, textAlign: 'center', background: C.warmWhite,
+            border: `2px solid ${C.border}`, fontSize: 40, fontWeight: 900,
+            letterSpacing: 16, textAlign: 'center', background: C.warmWhite,
             outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }} />
         <Btn onClick={verify} loading={loading} full style={{ marginTop: 14 }}>
           Verify & Mark Attendance

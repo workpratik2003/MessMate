@@ -35,6 +35,9 @@ class User(db.Model):
     extension_days = db.Column(db.Integer, default=0)
     otp = db.Column(db.String(6), nullable=True)
     otp_expires_at = db.Column(db.Float, nullable=True)  # timestamp
+    # Tracks the last date through which missed-day deduction has been applied
+    deducted_through = db.Column(db.String(10), nullable=True)
+
 
     # Relationships
     attendances = db.relationship('Attendance', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -84,6 +87,8 @@ class Slot(db.Model):
     status = db.Column(db.String(20), default='empty')  # 'empty', 'active'
     admin_id = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.String(30), default=lambda: datetime.utcnow().isoformat())
+    # Owner-configurable cap on how many extension days this mess's admin can grant
+    max_extension_days = db.Column(db.Integer, default=15, nullable=False)
 
     def to_dict(self):
         admin = None
@@ -96,6 +101,7 @@ class Slot(db.Model):
             'label': self.label,
             'status': self.status,
             'createdAt': self.created_at,
+            'maxExtensionDays': self.max_extension_days,
             'admin': admin,
         }
 

@@ -28,11 +28,13 @@ export const ownerLogin    = (body) => req('/api/owner/login',    { method: 'POS
 export const ownerMe       = ()     => req('/api/owner/me');
 
 // Slots
-export const listSlots    = ()           => req('/api/owner/slots');
-export const createSlot   = (label)      => req('/api/owner/slots', { method: 'POST', body: { label } });
-export const deleteSlot   = (id)         => req(`/api/owner/slots/${id}`,        { method: 'DELETE' });
-export const assignAdmin  = (id, body)   => req(`/api/owner/slots/${id}/assign`, { method: 'POST', body });
-export const removeAdmin  = (id)         => req(`/api/owner/slots/${id}/remove`, { method: 'POST' });
+export const listSlots         = ()             => req('/api/owner/slots');
+export const createSlot        = (label)        => req('/api/owner/slots', { method: 'POST', body: { label } });
+export const deleteSlot        = (id)           => req(`/api/owner/slots/${id}`,          { method: 'DELETE' });
+export const assignAdmin       = (id, body)     => req(`/api/owner/slots/${id}/assign`,   { method: 'POST', body });
+export const removeAdmin       = (id)           => req(`/api/owner/slots/${id}/remove`,   { method: 'POST' });
+export const getSlotSettings   = (id)           => req(`/api/owner/slots/${id}/settings`);
+export const updateSlotSettings= (id, body)     => req(`/api/owner/slots/${id}/settings`, { method: 'POST', body });
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 export const adminLogin  = (body) => req('/api/admin/login',   { method: 'POST', body });
